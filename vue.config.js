@@ -5,11 +5,11 @@ module.exports = defineConfig({
   devServer: {
     proxy: {
       '/socket.io': {
-        target: 'http://localhost:3000',
+        target: 'https://www.frtw.ru',
         ws: true
       },
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'https://www.frtw.ru',
         changeOrigin: true
       }
     }

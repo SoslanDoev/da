@@ -20,7 +20,7 @@
     import { useRouter, useRoute } from "vue-router"
     import { onMounted, ref } from "vue"
     import socketIOClient from "socket.io-client"
-    const WS = `http://localhost:3000`
+    const WS = `https://www.frtw.ru`
     import { v4 as uuidV4 } from "uuid"
     const keyRoom = ref(null)
     const router = useRouter()
