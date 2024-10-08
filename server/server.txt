@@ -1,0 +1,81 @@
+const cors = require("cors")
+const express = require("express")
+const http = require("http")
+const { Server } = require("socket.io")
+
+const port = process.env.PORT || 3000
+const app = express()
+app.use(cors())
+const server = http.createServer(app)
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  }
+})
+
+// База данных не используется поэтому комнаты будут записываться в переменную
+const rooms = {}
+const userSocketMap = {}
+
+// Подключение пользователя
+io.on("connection", (socket) => {
+  console.log("client connection")
+
+  // Создание комнаты
+  socket.on("create-room", ({ roomID }) => {
+    io.emit("getRooms", {room: roomID })
+    rooms[roomID] = []
+  })
+
+  // Получение экрана пользователя
+  socket.on("screen-share-started", ({ peerID, roomID }) => {
+    if (rooms[roomID]) {
+      socket.to(roomID).emit("screen-share-started", { roomID: roomID, peerID: peerID })
+    }
+  })
+
+  socket.on("screen-share-stopped", ({ peerID, roomID }) => {
+    if (rooms[roomID]) {
+      socket.to(roomID).emit("screen-share-stopped", { roomID: roomID, peerID: peerID })
+    }
+  })
+
+  // Подключение к комнате
+  socket.on("join-room", ({ roomID, peerID }) => {
+    if (rooms[roomID]) {
+      console.log(`user joined the room: ${roomID}, peerID: ${peerID}`)
+      rooms[roomID].push(peerID)
+      userSocketMap[socket.id] = peerID
+      socket.join(roomID)
+      socket.to(roomID).emit("user-joined", { peerID })
+      socket.emit("get-users", { roomID, participants: rooms[roomID] })
+    }
+  })
+
+  // Отключение пользователя
+  socket.on("disconnect", () => {
+    console.log("client disconnect")
+    const peerID = userSocketMap[socket.id]
+    for (const roomID in rooms) {
+      const room = rooms[roomID]
+      if (room.includes(peerID)) {
+        leaveRoom({ roomID, peerID })
+      }
+    }
+    delete userSocketMap[socket.id]
+  })
+
+  // Удаление пользователя который вышел из rooms
+  const leaveRoom = ({ roomID, peerID }) => {
+    console.log(`user left the room: ${roomID}, peerID: ${peerID}`)
+    if (rooms[roomID]) {
+      rooms[roomID] = rooms[roomID].filter((id) => id !== peerID)
+      socket.to(roomID).emit("user-disconnected", { peerID })
+    }
+  }
+})
+
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`)
+})
